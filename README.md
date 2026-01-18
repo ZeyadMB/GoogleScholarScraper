@@ -14,4 +14,6 @@ Also, whenever you change the settings, you need to press the "Update Settings" 
 You can also adjust the SleepTime variables that enable you to wait for certain amount of time (in seconds) after a page had been loaded. This helps you NOT getting blocked by Google or other websites due to excess requests being sent from you IP.
 
 Good luck, and have fun!
+
+
 Zeyad
