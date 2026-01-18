@@ -6,6 +6,7 @@ You can save this data on an excel file anywhere on your computer and extract wh
 
 Sol. also sends the dug-up articles to Zotero, where you can use your own addons from there to process that data anyway you want (lots of potential!).
 #You need to have Zotero and Google Chrome installed, check your google profile directory with the Zotero plugin installed and insert it in 'Chrome Profile Path'.
+Also when you have your Zotero plugin installed in your google chrome profile, make sure you make it pinned and add a "ALT+X" hot-key for it so that Soltan can use it.
 
 If you already have a google chrome profile with Zotero-connector installed, then you can add its directory to the given prompt. If you don't have a Chrome profile, however, then feel free to use the given 'Profile 1' chrome profile on the same directory by taking its directory location and pasting it on the given prompt. 
 (e.g.: D:\\Projects\\SoltanScholar1.6\\Profile 1)
