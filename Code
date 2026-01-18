@@ -1,0 +1,205 @@
+import time
+import random
+import pandas as pd
+import tkinter as tk
+from tkinter import filedialog
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from fake_useragent import UserAgent
+from selenium.webdriver.common.keys import Keys
+import threading
+from bs4 import BeautifulSoup
+from selenium.webdriver.common.action_chains import ActionChains
+import pyautogui
+#Settings
+sleep_time_short = 2
+sleep_time_long = 3
+chrome_profile_path = r"C:\\Users\\manbo\\AppData\\Local\\Google\\Chrome\\User Data\\Profile 1"
+
+#Main Scraping function
+def scrape_scholar_articles(query, num_pages):
+    ua = UserAgent()
+    articles = []
+    options = Options()
+    options.add_argument("start-maximized")  # Maximize the window to see CAPTCHA
+    options.add_argument(f"user-agent={ua.random}")
+
+    # Setting up the selenium webdriver
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
+    page = 0
+    while page < num_pages:
+        log(f"Scraping page {page + 1} of {num_pages}...")
+
+        url = f"https://scholar.google.com/scholar?start={page * 10}&q={query}&hl=en&as_sdt=0,5"
+        driver.get(url)
+
+        # Wait for the page to load
+        time.sleep(random.uniform(1, 2))
+
+        # Check if CAPTCHA is present
+        if "recaptcha" in driver.page_source:
+            log("CAPTCHA detected. Solving it manually...")
+            driver.maximize_window()  #browser window is visible
+            time.sleep(30)  #give time to solve CAPTCHA manually
+            continue
+
+        # Parse articles after page loads
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        results = soup.find_all("div", class_="gs_ri")
+
+        for result in results:
+            try:
+                title = result.find("h3", class_="gs_rt").text
+                authors = result.find("div", class_="gs_a").text
+                link = result.find("a")["href"] if result.find("a") else "N/A"
+                abstract = result.find("div", class_="gs_rs").text if result.find("div", "gs_rs") else "N/A"
+                articles.append({"Title": title, "Authors": authors, "Link": link, "Abstract": abstract})
+            except AttributeError:
+                continue
+
+        log(f"Page {page + 1} scraped. Total articles so far: {len(articles)}")
+        page += 1
+
+    driver.quit()
+    return articles
+
+# Function to save data to Excel with file dialog
+def save_to_excel(articles):
+    file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[["Excel files", "*.xlsx"]])
+    if file_path:
+        try:
+            df = pd.DataFrame(articles)
+            df.to_excel(file_path, index=False)
+            log(f"Saved file to: {file_path}")
+        except Exception as e:
+            log(f"Error while saving file: {e}")
+    else:
+        log("No file path selected...")
+
+# Function to process the Excel file and add articles to Zotero
+def process_excel_and_add_to_zotero():
+    file_path = filedialog.askopenfilename(filetypes=[["Excel files", "*.xlsx"]])
+    if not file_path:
+        log("No file selected...")
+        return
+
+    try:
+        df = pd.read_excel(file_path)
+        if "Link" not in df.columns:
+            log("Your excel file doesn't seem to have 'Link' written in any of the columns. Try again and lets start digging, we a got deadlines to meet")
+            return
+        # Setup Selenium WebDriver with your Chrome profile
+        ua = UserAgent()
+        options = Options()
+        options.add_argument("start-maximized")
+        options.add_argument(f"user-agent={ua.random}")
+        # Use the existing Chrome profile
+        options.add_argument(f"user-data-dir={chrome_profile_path}")
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        for index, row in df.iterrows():
+            url = row.get("Link")
+            if not pd.isna(url) and isinstance(url, str):
+                log(f"Opening URL {index + 1}/{len(df)}: {url}")
+                driver.get(url)
+                time.sleep(random.uniform(sleep_time_short, sleep_time_long))
+
+                # Simulate ALT+X key press for Zotero using PyAutoGUI (after focusing the browser)
+                time.sleep(2)  # Wait a moment to ensure the page is fully loaded
+                pyautogui.hotkey('alt', 'x') 
+                log(f"Pressed ALT+X for Zotero Connector at URL: {url}")
+
+            else:
+                log(f"That URL sucks. the one at row {index + 1}. Skipping... :I")
+
+        driver.quit()
+        log("Zotero processing complete! :D")
+    except Exception as e:
+        log(f"An error occurred: {e}")
+
+# Function to log messages to the debug text widget
+def log(message):
+    debug_text.insert(tk.END, f"{message}\n")
+    debug_text.see(tk.END)
+    window.update_idletasks()
+
+
+# GUI Functions
+def scrape_articles():
+    query = entry_query.get()
+    num_pages = int(entry_pages.get())
+    articles = scrape_scholar_articles(query, num_pages)
+    log(f"Digging complete. Total articles dug out: {len(articles)}.")
+    save_to_excel(articles)
+
+def start_scraping_in_thread():
+    scraping_thread = threading.Thread(target=scrape_articles)
+    scraping_thread.start()
+
+def update_settings():
+    global sleep_time_short, sleep_time_long, chrome_profile_path
+    try:
+        sleep_time_short = int(entry_sleep_short.get())
+        sleep_time_long = int(entry_sleep_long.get())
+        chrome_profile_path = entry_chrome_profile.get()
+        log("Settings updated!")
+    except ValueError:
+        log("Please enter integers in the 'from-to' space.")
+
+# GUI Setup
+window = tk.Tk()
+window.title("SoltanScholar v1.6")
+window.geometry("500x500")
+
+label_query = tk.Label(window, text="Google Scholar Syntax:")
+label_query.pack()
+entry_query = tk.Entry(window, width=40)
+entry_query.pack()
+
+label_pages = tk.Label(window, text="Number of Pages:")
+label_pages.pack()
+entry_pages = tk.Entry(window, width=40)
+entry_pages.pack()
+
+label_sleep_short = tk.Label(window, text="(SleepTime for page loading) From:")
+label_sleep_short.pack()
+entry_sleep_short = tk.Entry(window, width=40)
+entry_sleep_short.insert(0, str(sleep_time_short))
+entry_sleep_short.pack()
+
+label_sleep_long = tk.Label(window, text="(SleepTime for page loading) To:")
+label_sleep_long.pack()
+entry_sleep_long = tk.Entry(window, width=40)
+entry_sleep_long.insert(0, str(sleep_time_long))
+entry_sleep_long.pack()
+
+label_chrome_profile = tk.Label(window, text="Chrome Profile Directory:")
+label_chrome_profile.pack()
+entry_chrome_profile = tk.Entry(window, width=40)
+entry_chrome_profile.insert(0, chrome_profile_path)
+entry_chrome_profile.pack()
+
+button_update_settings = tk.Button(window, text="Update Settings", command=update_settings)
+button_update_settings.pack()
+
+button_extract = tk.Button(window, text="Start Digging", command=start_scraping_in_thread)
+button_extract.pack()
+
+button_zotero = tk.Button(window, text="Send to Zotero", command=process_excel_and_add_to_zotero)
+button_zotero.pack()
+
+
+label_status = tk.Label(window, text="")
+label_status.pack()
+
+debug_frame = tk.Frame(window)
+debug_frame.pack()
+scrollbar = tk.Scrollbar(debug_frame)
+scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+debug_text = tk.Text(debug_frame, height=15, width=60, yscrollcommand=scrollbar.set) 
+debug_text.pack()
+scrollbar.config(command=debug_text.yview)
+
+window.mainloop()
