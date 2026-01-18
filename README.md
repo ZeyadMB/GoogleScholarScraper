@@ -2,7 +2,7 @@ Soltan is your loyal research writing assistant.
 Just give him your Google Scholar Syntax, and he will start digging, no questions asked.
 
 He will take the first 30 seconds before starting his digging operations, after that, he will scrape whatever he sees on GoolgeSearch result html page.
-You can save this data on an excel file anywhere on your computer and extract whatever data you want from there, which is particularly useful if you're running a systematic analysis or similar.
+You can save this data on an excel file anywhere on your computer and extract whatever data you want from there, which is particularly useful if you're running a systematic review or similar.
 
 Sol. also sends the dug-up articles to Zotero, where you can use your own addons from there to process that data anyway you want (lots of potential!).
 ##*You need to have Zotero and Google Chrome installed, check your google profile directory with the Zotero plugin installed and insert it in 'Chrome Profile Path'*
